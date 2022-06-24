@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+	{% load static %}
+	{% csrf_token %}
+	<meta charset="UTF-8">
+	<title>Demande de création de pièce détachée</title>
+	<script src="https://kit.fontawesome.com/5da4a0b55c.js" crossorigin="anonymous"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="{% static 'app/css/app.css' %}" />
+	<link rel="stylesheet" href="{% static 'app/css/style.css' %}" />
+	<script src="{% static 'app/js/vue_dev.js' %}"></script>
+	<script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+	<script src="{% static 'app/js/axios.min.js' %}"></script>
+	<script type="module" src="{% static 'app/js/script.js' %}"></script>
+</head>
+
+<body>
+	<!-- Canvas -->
+	<main>
+		<canvas class="orb-canvas" style="touch-action: none; cursor: inherit;" width="1920" height="833"></canvas>
+		<div id="app">
+			<div id="homeView" v-if="current_page == 'homeView'">
+				<section class="overlay">
+					<div class="overlay__inner">
+						<header class="overlay__inner__title">
+							<h1>RemakeIT</h1>
+							<h3 class="overlay__inner__content__right__text">Importer une image de Chien ou de Chat pour commencer ! </h3>
+							<h2 v-if="message != ''">[[ message ]]</h2>
+						</header>
+						<main class="overlay__inner__content">
+							<div class="overlay__inner__content__left" v-on:dragover.prevent v-on:drop.prevent
+								v-on:click="dropImgClick()">
+								<div class="overlay__inner__content__left__upload" v-on:drop="uploadFile">
+									<label for="upload_byfolder" class="required"></label>
+									<input autocomplete="file" id="upload_byfolder" type="file"
+										accept=".png,.jpg,.jpeg,.tiff,.webp,.gif" name="file"
+										placeholder="Importer ou drop une image" v-on:change="uploadFile"
+										required="required" class="form__input">
+									<div class="icon"><i class="fa-solid fa-arrow-up-from-bracket"></i>
+									</div>
+								</div>
+								<div class="overlay__inner__content__left__text"> Glisser - Déposer </div>
+							</div>
+							<div class="overlay__inner__content__separator"></div>
+							<div class="overlay__inner__content__right">
+								<div class="overlay__inner__content__right__text"> J'importe une image depuis mon
+									ordinateur </div>
+								<div class="button gradient" v-on:click="dropImgClick()">Importer</div>
+							</div>
+						</main>
+						<footer class="overlay__inner__footer">
+							<h3>Made with ❤️ and some ☕ by</h3>
+							<div class="overlay__inner__footer__authors">
+								<a href="#" class="overlay__inner__footer__authors__author button black">
+									<i class="bx bxl-github"></i>Jérémy Didier
+								</a>
+							</div>
+						</footer>
+					</div>
+				</section>
+			</div>
+
+			<div id="successView" v-if="current_page == 'successView'">
+				<section class="overlay">
+					<div class="overlay__inner">
+						<header class="overlay__inner__title">
+							<h1>RemakeIT</h1>
+							<h3 class="overlay__inner__content__right__text">
+								Résultat de l'analyse :
+							</h3>
+							<h2 v-if="message != ''">[[ message ]]</h2>
+						</header>
+						<main class="overlay__inner__content">
+							<div class="overlay__inner__content__image-preview">
+								<div class="overlay__inner__content__image-preview__wrapper">
+									<div class="overlay__inner__content__image-preview__wrapper__image">
+										<img v-bind:src="img_url" alt="your image" />
+									</div>
+								</div>
+							</div>
+							<div class="overlay__inner__content__result">
+								<div v-for="res in result">
+									[[ res.result ]]
+								</div>
+							</div>
+						</main>
+						<footer class="overlay__inner__footer">
+							<div v-on:click="errorReport()" class="button red">Report error</div>
+							<div v-on:click="current_page='homeView'" class="button red">Retour</div>
+						</footer>
+					</div>
+				</section>
+			</div>
+		</div>
+		<script>
+			axios.defaults.xsrfCookieName = 'csrftoken';
+			axios.defaults.xsrfHeaderName = "X-CSRFTOKEN";
+		</script>
+	</main>
+</body>
+
+</html>
+
+<script>
+	var app = new Vue({
+		el: '#app',
+		delimiters: ['[[', ']]'],
+		data: {
+			img_loaded: '',
+			result: '',
+			message: '',
+			current_page: '',
+			img_src: '',
+			img_name: '',
+			error: Boolean
+		},
+		mounted: function () {
+			this.current_page = 'homeView'
+		},
+		methods: {
+			dropImgClick: function () {
+				document.getElementById("upload_byfolder").click();
+			},
+			errorReport: function(){
+				console.log(this.result)
+				self = this
+				axios.post("errorReport", {
+							'id': self.result[0].id,
+							'error' : false,
+							headers: {
+								'Content-Type': 'multipart/form-data'
+							}
+						}).then(function (response) {
+							if (response.data.error == false) {
+								self.message = response.data.message
+								
+							} else {
+								self.message = response.data.message
+							}
+						});
+			},
+			uploadFile: function (event) {
+				self = this
+				var file = "";
+				if (event.type != "change") {
+					self.img_loaded = event.dataTransfer.files;
+					file = self.img_loaded[0];
+				} else {
+					self.img_loaded = event.target.files;
+					file = self.img_loaded[0];
+				}
+				self.img_url = URL.createObjectURL(file);
+				self.img_name = file.name
+				
+				var input = event.target;
+				// Ensure that you have a file before attempting to read it
+				if (input.files && input.files[0]) {
+					// create a new FileReader to read this image and convert to base64 format
+					var reader = new FileReader();
+					// Define a callback function to run, when FileReader finishes its job
+					reader.onload = (e) => {
+						// Read image as base64 and set to img_loaded
+						//.replace(/^data:image\/(png|jpg|jpeg);base64,/,"")
+						self.img_loaded = e.target.result
+						axios.post("load_image", {
+							'img_loaded': self.img_loaded,
+							'img_name': self.img_name,
+							headers: {
+								'Content-Type': 'multipart/form-data'
+							}
+						}).then(function (response) {
+							if (response.data.error == false) {
+								self.current_page = 'successView'
+								self.result = response.data.data
+								self.img_src = response.data.image
+							} else {
+								self.message = response.data.message
+							}
+						});
+					}
+					// Start the reader job - read file as a data url (base64 format)
+					reader.readAsDataURL(input.files[0]);
+				}
+			},
+		}
+	})
+</script>
