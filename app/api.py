@@ -71,16 +71,13 @@ def load_image(request):
 
         else:
             return JsonResponse({'error': True, 'message': 'bad file extension'})
+    else:
+        return JsonResponse({'error': True, 'message': 'bad request'})
 
 def errorReport(request):
     if request.method == 'POST':
 
         data = json.loads(request.body)
-        print('--------------------------------------')
-        print('--------------------------------------')
-        print(data['id'])
-        print('--------------------------------------')
-        print('--------------------------------------')
 
         try:
             # Enregistrement de l'image, du resultat et du nom dans la bdd
